@@ -249,8 +249,8 @@ def create_app(
                         ctx_ids,
                         timesteps=timesteps,
                         guidance=guidance,
-                        img_cond_seq=[],
-                        img_cond_seq_ids=[],
+                        img_cond_seq=None,
+                        img_cond_seq_ids=None,
                     )
                 else:
                     x = denoise_cfg(
@@ -261,8 +261,8 @@ def create_app(
                         ctx_ids,
                         timesteps=timesteps,
                         guidance=guidance,
-                        img_cond_seq=[],
-                        img_cond_seq_ids=[],
+                        img_cond_seq=None,
+                        img_cond_seq_ids=None,
                     )
                 x = torch.cat(scatter_ids(x, x_ids)).squeeze(2)
                 x = ae.decode(x).float()
