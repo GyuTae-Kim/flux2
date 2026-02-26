@@ -371,10 +371,16 @@ class Qwen3Embedder(nn.Module):
         torch_dtype: torch.dtype | None = None,
         gguf_file: str | None = None,
         tokenizer_spec: str | None = None,
+        trust_remote_code: bool = False,
+        enable_thinking: bool = False,
     ):
         super().__init__()
+        self.enable_thinking = enable_thinking
 
-        from_pretrained_kwargs = {"device_map": str(device)}
+        from_pretrained_kwargs = {
+            "device_map": str(device),
+            "trust_remote_code": trust_remote_code,
+        }
         if torch_dtype is not None:
             from_pretrained_kwargs["dtype"] = torch_dtype
         if gguf_file is not None:
@@ -385,8 +391,14 @@ class Qwen3Embedder(nn.Module):
             **from_pretrained_kwargs,
         )
 
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_spec or model_spec)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            tokenizer_spec or model_spec,
+            trust_remote_code=trust_remote_code,
+        )
         self.max_length = MAX_LENGTH
+
+    def set_enable_thinking(self, enable_thinking: bool) -> None:
+        self.enable_thinking = enable_thinking
 
     @torch.no_grad()
     def forward(self, txt: list[str]):
@@ -395,12 +407,20 @@ class Qwen3Embedder(nn.Module):
 
         for prompt in txt:
             messages = [{"role": "user", "content": prompt}]
-            text = self.tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True,
-                enable_thinking=False,
-            )
+            try:
+                text = self.tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                    enable_thinking=self.enable_thinking,
+                )
+            except TypeError:
+                # Some tokenizers do not support enable_thinking.
+                text = self.tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
 
             model_inputs = self.tokenizer(
                 text,
@@ -462,6 +482,8 @@ def load_qwen3_embedder(
     model_spec: str | None = None,
     gguf_file: str | None = None,
     tokenizer_spec: str | None = None,
+    trust_remote_code: bool = False,
+    enable_thinking: bool = False,
     fallback_model_spec: str | None = None,
 ):
     if model_spec is not None:
@@ -472,6 +494,8 @@ def load_qwen3_embedder(
                 torch_dtype=None if gguf_file is not None else torch.bfloat16,
                 gguf_file=gguf_file,
                 tokenizer_spec=tokenizer_spec,
+                trust_remote_code=trust_remote_code,
+                enable_thinking=enable_thinking,
             )
         except Exception as e:
             if fallback_model_spec is None:
@@ -484,6 +508,8 @@ def load_qwen3_embedder(
                 model_spec=fallback_model_spec,
                 device=device,
                 torch_dtype=torch.bfloat16,
+                trust_remote_code=trust_remote_code,
+                enable_thinking=enable_thinking,
             )
 
     assert variant is not None, "variant must be provided when model_spec is not specified"

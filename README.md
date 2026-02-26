@@ -161,6 +161,33 @@ Notes:
 - Only one generation request is processed at a time (additional requests get HTTP `429`).
 - Make sure firewall/security-group rules allow inbound TCP `7860`.
 - Basic Auth is required for all routes (`/`, `/health`, `/generate`).
+- The web UI supports chat-style iterative prompting and image editing with one or more reference images.
+
+### Web API request fields (`POST /generate`)
+
+```json
+{
+  "prompt": "make it a rainy night scene",
+  "width": 1360,
+  "height": 768,
+  "num_steps": 4,
+  "guidance": 1.0,
+  "seed": 12345,
+  "history_prompts": ["a city street at daytime", "turn it into sunset"],
+  "input_images_base64": ["<base64_png_or_jpg>"],
+  "match_image_size": 0,
+  "enable_thinking": false
+}
+```
+
+`input_images_base64` enables image editing mode (single or multi-reference).
+
+## Klein 4B Text Encoder Override
+
+`flux.2-klein-4b` and `flux.2-klein-base-4b` are configured to load:
+- `huihui-ai/Huihui-Qwen3-4B-abliterated-v2` (model + tokenizer)
+
+The loader uses Hugging Face `from_pretrained(..., trust_remote_code=True)` in line with that model card usage.
 
 ## Watermarking
 
