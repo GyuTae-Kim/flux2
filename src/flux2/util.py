@@ -80,7 +80,7 @@ FLUX2_MODEL_INFO = {
         "filename_ae": "ae.safetensors",
         "params": Klein4BParams(),
         "text_encoder_load_fn": lambda device="cuda": load_qwen3_embedder(
-            model_spec=KLEIN4B_TEXT_ENCODER_GGUF_REPO,
+            model_spec="Qwen/Qwen3-4B",
             gguf_file=resolve_klein4b_text_encoder_gguf_path(),
             tokenizer_spec="Qwen/Qwen3-4B",
             device=device,
@@ -109,7 +109,7 @@ FLUX2_MODEL_INFO = {
         "filename_ae": "ae.safetensors",
         "params": Klein4BParams(),
         "text_encoder_load_fn": lambda device="cuda": load_qwen3_embedder(
-            model_spec=KLEIN4B_TEXT_ENCODER_GGUF_REPO,
+            model_spec="Qwen/Qwen3-4B",
             gguf_file=resolve_klein4b_text_encoder_gguf_path(),
             tokenizer_spec="Qwen/Qwen3-4B",
             device=device,
