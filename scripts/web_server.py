@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fire import Fire
 from pydantic import BaseModel, Field
-from PIL import ExifTags, Image
+from PIL import Image
 
 from flux2.sampling import batched_prc_img, batched_prc_txt, denoise, denoise_cfg, get_schedule, scatter_ids
 from flux2.util import FLUX2_MODEL_INFO, load_ae, load_flow_model, load_text_encoder
@@ -81,8 +81,7 @@ HTML_PAGE = """<!doctype html>
         if (!res.ok) throw new Error(payload.detail || "Request failed");
         document.getElementById("status").textContent = "Done";
         document.getElementById("meta").textContent = JSON.stringify({
-          seed: payload.seed,
-          output_path: payload.output_path
+          seed: payload.seed
         }, null, 2);
         document.getElementById("result").src = "data:image/png;base64," + payload.image_base64;
       } catch (err) {
@@ -175,8 +174,6 @@ def create_app(
     model.eval()
     ae.eval()
 
-    output_dir = Path("output")
-    output_dir.mkdir(exist_ok=True)
     infer_lock = threading.Lock()
 
     app = FastAPI(title="FLUX.2 Web Server", version="0.1.0")
@@ -271,19 +268,12 @@ def create_app(
             x = rearrange(x[0], "c h w -> h w c")
             img = Image.fromarray((127.5 * (x + 1.0)).cpu().byte().numpy())
 
-            output_name = output_dir / f"web_{len(list(output_dir.glob('web_*.png')))}.png"
-            exif_data = Image.Exif()
-            exif_data[ExifTags.Base.Software] = "AI generated;flux2-web"
-            exif_data[ExifTags.Base.Make] = "Black Forest Labs"
-            img.save(output_name, exif=exif_data, quality=95, subsampling=0)
-
             buf = io.BytesIO()
             img.save(buf, format="PNG")
             image_base64 = base64.b64encode(buf.getvalue()).decode()
 
             return {
                 "seed": seed,
-                "output_path": str(output_name),
                 "image_base64": image_base64,
             }
         except HTTPException:
