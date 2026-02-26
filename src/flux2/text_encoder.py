@@ -432,5 +432,33 @@ def load_mistral_small_embedder(device: str | torch.device = "cuda") -> Mistral3
     return Mistral3SmallEmbedder().to(device)
 
 
+def _supports_fp8(device: str | torch.device = "cuda") -> bool:
+    if not torch.cuda.is_available():
+        return False
+
+    torch_device = torch.device(device)
+    if torch_device.type != "cuda":
+        return False
+
+    device_index = torch_device.index
+    if device_index is None:
+        device_index = torch.cuda.current_device()
+
+    major, minor = torch.cuda.get_device_capability(device_index)
+    return (major, minor) >= (8, 9)
+
+
 def load_qwen3_embedder(variant: str, device: str | torch.device = "cuda"):
-    return Qwen3Embedder(model_spec=f"Qwen/Qwen3-{variant}-FP8", device=device)
+    fp8_model_spec = f"Qwen/Qwen3-{variant}-FP8"
+    fallback_model_spec = f"Qwen/Qwen3-{variant}"
+
+    if _supports_fp8(device):
+        model_spec = fp8_model_spec
+    else:
+        print(
+            f"FP8 text encoder is not supported on device {device}; "
+            f"falling back to {fallback_model_spec}"
+        )
+        model_spec = fallback_model_spec
+
+    return Qwen3Embedder(model_spec=model_spec, device=device)
