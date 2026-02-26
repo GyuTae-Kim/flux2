@@ -281,12 +281,25 @@ def main(
 
     model_info = FLUX2_MODEL_INFO[model_name]
     torch_device = torch.device("cuda")
+    is_klein_model = "klein" in model_name
+    aux_torch_device = torch_device
+    if is_klein_model and torch.cuda.device_count() > 1:
+        aux_torch_device = torch.device("cuda:1")
+        print(f"Using {aux_torch_device} for optional moderation/upsampling model")
 
     text_encoder = load_text_encoder(model_name, device=torch_device)
-    if "klein" in model_name:
-        mod_and_upsampling_model = load_text_encoder("flux.2-dev")
+    if is_klein_model:
+        mod_and_upsampling_model = None
     else:
         mod_and_upsampling_model = text_encoder
+
+    def ensure_mod_and_upsampling_model():
+        nonlocal mod_and_upsampling_model
+        if mod_and_upsampling_model is None:
+            print(f"Loading moderation/upsampling model on {aux_torch_device}")
+            mod_and_upsampling_model = load_text_encoder("flux.2-dev", device=aux_torch_device)
+            mod_and_upsampling_model.eval()
+        return mod_and_upsampling_model
 
     model = load_flow_model(
         model_name, debug_mode=debug_mode, device="cpu" if cpu_offloading else torch_device
@@ -348,13 +361,17 @@ def main(
                         )
                         continue
 
-                if "prompt" in updates and mod_and_upsampling_model.test_txt(updates["prompt"]):
+                if (
+                    "prompt" in updates
+                    and mod_and_upsampling_model is not None
+                    and mod_and_upsampling_model.test_txt(updates["prompt"])
+                ):
                     print(
                         "Your prompt has been flagged for potential copyright or public personas concerns. Please choose another."
                     )
                     updates.pop("prompt")
 
-                if "input_images" in updates:
+                if "input_images" in updates and mod_and_upsampling_model is not None:
                     flagged = False
                     for image in updates["input_images"]:
                         if mod_and_upsampling_model.test_image(image):
@@ -550,7 +567,8 @@ def main(
                         prompt = cfg.prompt
                 elif cfg.upsample_prompt_mode == "local":
                     # Use local model for upsampling
-                    upsampled_prompts = mod_and_upsampling_model.upsample_prompt(
+                    upsampling_model = ensure_mod_and_upsampling_model()
+                    upsampled_prompts = upsampling_model.upsample_prompt(
                         [cfg.prompt], img=[img_ctx] if img_ctx else None
                     )
                     prompt = upsampled_prompts[0] if upsampled_prompts else cfg.prompt
@@ -572,7 +590,11 @@ def main(
                     text_encoder = text_encoder.cpu()
                     torch.cuda.empty_cache()
                     model = model.to(torch_device)
-                    if "klein" in model_name:
+                    if (
+                        is_klein_model
+                        and mod_and_upsampling_model is not None
+                        and aux_torch_device == torch_device
+                    ):
                         mod_and_upsampling_model = mod_and_upsampling_model.cpu()
 
                 # Create noise
@@ -615,7 +637,11 @@ def main(
                     torch.cuda.empty_cache()
                     text_encoder = text_encoder.to(torch_device)
 
-                    if "klein" in model_name:
+                    if (
+                        is_klein_model
+                        and mod_and_upsampling_model is not None
+                        and aux_torch_device == torch_device
+                    ):
                         mod_and_upsampling_model = mod_and_upsampling_model.to(torch_device)
 
             x = x.clamp(-1, 1)
@@ -623,7 +649,7 @@ def main(
 
             img = Image.fromarray((127.5 * (x + 1.0)).cpu().byte().numpy())
 
-            if mod_and_upsampling_model.test_image(img):
+            if mod_and_upsampling_model is not None and mod_and_upsampling_model.test_image(img):
                 print("Your output has been flagged. Please choose another prompt / input image combination")
             else:
                 exif_data = Image.Exif()

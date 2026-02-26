@@ -368,12 +368,13 @@ class Qwen3Embedder(nn.Module):
         self,
         model_spec: str,
         device: str | torch.device = "cuda",
+        torch_dtype: torch.dtype | None = None,
     ):
         super().__init__()
 
         self.model = AutoModelForCausalLM.from_pretrained(
             model_spec,
-            torch_dtype=None,
+            torch_dtype=torch_dtype,
             device_map=str(device),
         )
 
@@ -454,11 +455,13 @@ def load_qwen3_embedder(variant: str, device: str | torch.device = "cuda"):
 
     if _supports_fp8(device):
         model_spec = fp8_model_spec
+        torch_dtype = None
     else:
         print(
             f"FP8 text encoder is not supported on device {device}; "
             f"falling back to {fallback_model_spec}"
         )
         model_spec = fallback_model_spec
+        torch_dtype = torch.bfloat16
 
-    return Qwen3Embedder(model_spec=model_spec, device=device)
+    return Qwen3Embedder(model_spec=model_spec, device=device, torch_dtype=torch_dtype)
