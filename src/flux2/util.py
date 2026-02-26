@@ -107,6 +107,10 @@ def load_flow_model(model_name: str, debug_mode: bool = False, device: str | tor
             model = Flux2(FLUX2_MODEL_INFO[model_name.lower()]["params"]).to(torch.bfloat16)
         print(f"Loading {weight_path} for the FLUX.2 weights")
         sd = load_sft(weight_path, device=str(device))
+        if "img_in.weight" not in sd and any(k.startswith("model.diffusion_model.") for k in sd):
+            print("Detected ComfyUI key format; remapping state_dict keys")
+            prefix = "model.diffusion_model."
+            sd = {k[len(prefix) :]: v for k, v in sd.items() if k.startswith(prefix)}
         model.load_state_dict(sd, strict=True, assign=True)
         return model.to(device)
     else:
