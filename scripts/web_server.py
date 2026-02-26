@@ -147,7 +147,7 @@ def _unauthorized_response() -> Response:
 
 
 def create_app(
-    model_name: str = "flux.2-klein-9b",
+    model_name: str = "flux.2-klein-4b",
     device: str = "cuda:0",
     auth_file: str = "secrets/web_auth.json",
 ):
@@ -291,7 +291,7 @@ def create_app(
 def main(
     host: str = "0.0.0.0",
     port: int = 7860,
-    model_name: str = "flux.2-klein-9b",
+    model_name: str = "flux.2-klein-4b",
     device: str = "cuda:0",
     auth_file: str = "secrets/web_auth.json",
 ):

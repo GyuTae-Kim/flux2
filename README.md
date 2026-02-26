@@ -149,7 +149,7 @@ cat > secrets/web_auth.json << 'EOF'
 {"id":"your-id","pw":"your-password"}
 EOF
 
-PYTHONPATH=src python scripts/web_server.py --model_name=flux.2-klein-9b --host=0.0.0.0 --port=7860 --auth_file=secrets/web_auth.json
+PYTHONPATH=src python scripts/web_server.py --model_name=flux.2-klein-4b --host=0.0.0.0 --port=7860 --auth_file=secrets/web_auth.json
 ```
 
 Then open:

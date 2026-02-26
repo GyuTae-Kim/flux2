@@ -369,12 +369,15 @@ class Qwen3Embedder(nn.Module):
         model_spec: str,
         device: str | torch.device = "cuda",
         torch_dtype: torch.dtype | None = None,
+        gguf_file: str | None = None,
     ):
         super().__init__()
 
         from_pretrained_kwargs = {"device_map": str(device)}
         if torch_dtype is not None:
             from_pretrained_kwargs["dtype"] = torch_dtype
+        if gguf_file is not None:
+            from_pretrained_kwargs["gguf_file"] = gguf_file
 
         self.model = AutoModelForCausalLM.from_pretrained(
             model_spec,
@@ -456,9 +459,29 @@ def load_qwen3_embedder(
     variant: str | None = None,
     device: str | torch.device = "cuda",
     model_spec: str | None = None,
+    gguf_file: str | None = None,
+    fallback_model_spec: str | None = None,
 ):
     if model_spec is not None:
-        return Qwen3Embedder(model_spec=model_spec, device=device, torch_dtype=torch.bfloat16)
+        try:
+            return Qwen3Embedder(
+                model_spec=model_spec,
+                device=device,
+                torch_dtype=None if gguf_file is not None else torch.bfloat16,
+                gguf_file=gguf_file,
+            )
+        except Exception as e:
+            if fallback_model_spec is None:
+                raise e
+            print(
+                f"Failed to load {model_spec}. Falling back to {fallback_model_spec}. "
+                f"Original error: {type(e).__name__}: {e}"
+            )
+            return Qwen3Embedder(
+                model_spec=fallback_model_spec,
+                device=device,
+                torch_dtype=torch.bfloat16,
+            )
 
     assert variant is not None, "variant must be provided when model_spec is not specified"
     fp8_model_spec = f"Qwen/Qwen3-{variant}-FP8"
