@@ -173,6 +173,8 @@ def create_app(
     text_encoder.eval()
     model.eval()
     ae.eval()
+    model_dtype = next(model.parameters()).dtype
+    ae_dtype = next(ae.parameters()).dtype
 
     infer_lock = threading.Lock()
 
@@ -224,16 +226,16 @@ def create_app(
 
             with torch.no_grad():
                 if model_info["guidance_distilled"]:
-                    ctx = text_encoder([req.prompt]).to(torch.bfloat16)
+                    ctx = text_encoder([req.prompt]).to(model_dtype)
                 else:
-                    ctx_empty = text_encoder([""]).to(torch.bfloat16)
-                    ctx_prompt = text_encoder([req.prompt]).to(torch.bfloat16)
+                    ctx_empty = text_encoder([""]).to(model_dtype)
+                    ctx_prompt = text_encoder([req.prompt]).to(model_dtype)
                     ctx = torch.cat([ctx_empty, ctx_prompt], dim=0)
                 ctx, ctx_ids = batched_prc_txt(ctx)
 
                 shape = (1, 128, req.height // 16, req.width // 16)
                 generator = torch.Generator(device=str(torch_device)).manual_seed(seed)
-                randn = torch.randn(shape, generator=generator, dtype=torch.bfloat16, device=torch_device)
+                randn = torch.randn(shape, generator=generator, dtype=model_dtype, device=torch_device)
                 x, x_ids = batched_prc_img(randn)
 
                 timesteps = get_schedule(num_steps, x.shape[1])
@@ -262,7 +264,7 @@ def create_app(
                         img_cond_seq_ids=None,
                     )
                 x = torch.cat(scatter_ids(x, x_ids)).squeeze(2)
-                x = ae.decode(x).float()
+                x = ae.decode(x.to(ae_dtype)).float()
 
             x = x.clamp(-1, 1)
             x = rearrange(x[0], "c h w -> h w c")

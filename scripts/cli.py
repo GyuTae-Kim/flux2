@@ -307,6 +307,8 @@ def main(
     ae = load_ae(model_name)
     ae.eval()
     text_encoder.eval()
+    model_dtype = next(model.parameters()).dtype
+    ae_dtype = next(ae.parameters()).dtype
 
     # API client will be initialized lazily when needed
     openrouter_api_client: Optional[OpenRouterAPIClient] = None
@@ -456,6 +458,8 @@ def main(
 
             with torch.no_grad():
                 ref_tokens, ref_ids = encode_image_refs(ae, img_ctx)
+                if ref_tokens is not None:
+                    ref_tokens = ref_tokens.to(model_dtype)
 
                 if cfg.upsample_prompt_mode == "openrouter":
                     try:
@@ -579,10 +583,10 @@ def main(
                 print("Generating with prompt: ", prompt)
 
                 if model_info["guidance_distilled"]:
-                    ctx = text_encoder([prompt]).to(torch.bfloat16)
+                    ctx = text_encoder([prompt]).to(model_dtype)
                 else:
-                    ctx_empty = text_encoder([""]).to(torch.bfloat16)
-                    ctx_prompt = text_encoder([prompt]).to(torch.bfloat16)
+                    ctx_empty = text_encoder([""]).to(model_dtype)
+                    ctx_prompt = text_encoder([prompt]).to(model_dtype)
                     ctx = torch.cat([ctx_empty, ctx_prompt], dim=0)
                 ctx, ctx_ids = batched_prc_txt(ctx)
 
@@ -600,7 +604,7 @@ def main(
                 # Create noise
                 shape = (1, 128, height // 16, width // 16)
                 generator = torch.Generator(device="cuda").manual_seed(seed)
-                randn = torch.randn(shape, generator=generator, dtype=torch.bfloat16, device="cuda")
+                randn = torch.randn(shape, generator=generator, dtype=model_dtype, device="cuda")
                 x, x_ids = batched_prc_img(randn)
 
                 timesteps = get_schedule(cfg.num_steps, x.shape[1])
@@ -629,7 +633,7 @@ def main(
                         img_cond_seq_ids=ref_ids,
                     )
                 x = torch.cat(scatter_ids(x, x_ids)).squeeze(2)
-                x = ae.decode(x).float()
+                x = ae.decode(x.to(ae_dtype)).float()
                 # x = embed_watermark(x)
 
                 if cpu_offloading:
