@@ -1,13 +1,15 @@
 import base64
 import io
+import json
 import random
+import secrets
 import threading
 from pathlib import Path
 
 import torch
 from einops import rearrange
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fire import Fire
 from pydantic import BaseModel, Field
 from PIL import ExifTags, Image
@@ -118,13 +120,43 @@ def _validate_model_params(model_name: str, num_steps: int, guidance: float) -> 
         raise HTTPException(status_code=400, detail=f"Model requires guidance={defaults['guidance']}")
 
 
+def _load_auth_credentials(auth_file: str) -> tuple[str, str]:
+    auth_path = Path(auth_file)
+    if not auth_path.exists():
+        raise ValueError(
+            f"Auth file not found: {auth_file}. "
+            "Create a JSON file with {'id': '...', 'pw': '...'}"
+        )
+
+    data = json.loads(auth_path.read_text(encoding="utf-8"))
+    user = data.get("id") or data.get("username")
+    password = data.get("pw") or data.get("password")
+
+    if not isinstance(user, str) or not user:
+        raise ValueError(f"Invalid auth file {auth_file}: missing non-empty 'id' (or 'username')")
+    if not isinstance(password, str) or not password:
+        raise ValueError(f"Invalid auth file {auth_file}: missing non-empty 'pw' (or 'password')")
+    return user, password
+
+
+def _unauthorized_response() -> Response:
+    return PlainTextResponse(
+        "Unauthorized",
+        status_code=401,
+        headers={"WWW-Authenticate": 'Basic realm="FLUX2"'},
+    )
+
+
 def create_app(
     model_name: str = "flux.2-klein-9b",
     device: str = "cuda:0",
+    auth_file: str = "secrets/web_auth.json",
 ):
     model_name = model_name.lower()
     if model_name not in FLUX2_MODEL_INFO:
         raise ValueError(f"Unknown model: {model_name}. Available: {list(FLUX2_MODEL_INFO.keys())}")
+    auth_user, auth_password = _load_auth_credentials(auth_file)
+    print(f"Basic auth enabled with credentials file: {auth_file}")
 
     torch_device = torch.device(device)
     model_info = FLUX2_MODEL_INFO[model_name]
@@ -148,6 +180,27 @@ def create_app(
     infer_lock = threading.Lock()
 
     app = FastAPI(title="FLUX.2 Web Server", version="0.1.0")
+
+    @app.middleware("http")
+    async def auth_middleware(request: Request, call_next):
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Basic "):
+            return _unauthorized_response()
+
+        encoded = auth_header.split(" ", 1)[1]
+        try:
+            decoded = base64.b64decode(encoded).decode("utf-8")
+            provided_user, provided_password = decoded.split(":", 1)
+        except Exception:
+            return _unauthorized_response()
+
+        if not (
+            secrets.compare_digest(provided_user, auth_user)
+            and secrets.compare_digest(provided_password, auth_password)
+        ):
+            return _unauthorized_response()
+
+        return await call_next(request)
 
     @app.get("/", response_class=HTMLResponse)
     def index():
@@ -248,10 +301,11 @@ def main(
     port: int = 7860,
     model_name: str = "flux.2-klein-9b",
     device: str = "cuda:0",
+    auth_file: str = "secrets/web_auth.json",
 ):
     import uvicorn
 
-    app = create_app(model_name=model_name, device=device)
+    app = create_app(model_name=model_name, device=device, auth_file=auth_file)
     uvicorn.run(app, host=host, port=port)
 
 

@@ -144,7 +144,12 @@ PYTHONPATH=src python scripts/cli.py
 You can run FLUX.2 as an HTTP service with a built-in test page:
 
 ```bash
-PYTHONPATH=src python scripts/web_server.py --model_name=flux.2-klein-9b --host=0.0.0.0 --port=7860
+mkdir -p secrets
+cat > secrets/web_auth.json << 'EOF'
+{"id":"your-id","pw":"your-password"}
+EOF
+
+PYTHONPATH=src python scripts/web_server.py --model_name=flux.2-klein-9b --host=0.0.0.0 --port=7860 --auth_file=secrets/web_auth.json
 ```
 
 Then open:
@@ -155,6 +160,7 @@ Notes:
 - The model is loaded once and kept in memory.
 - Only one generation request is processed at a time (additional requests get HTTP `429`).
 - Make sure firewall/security-group rules allow inbound TCP `7860`.
+- Basic Auth is required for all routes (`/`, `/health`, `/generate`).
 
 ## Watermarking
 
