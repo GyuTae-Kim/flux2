@@ -372,10 +372,13 @@ class Qwen3Embedder(nn.Module):
     ):
         super().__init__()
 
+        from_pretrained_kwargs = {"device_map": str(device)}
+        if torch_dtype is not None:
+            from_pretrained_kwargs["dtype"] = torch_dtype
+
         self.model = AutoModelForCausalLM.from_pretrained(
             model_spec,
-            torch_dtype=torch_dtype,
-            device_map=str(device),
+            **from_pretrained_kwargs,
         )
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_spec)
