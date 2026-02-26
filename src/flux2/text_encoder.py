@@ -370,6 +370,7 @@ class Qwen3Embedder(nn.Module):
         device: str | torch.device = "cuda",
         torch_dtype: torch.dtype | None = None,
         gguf_file: str | None = None,
+        tokenizer_spec: str | None = None,
     ):
         super().__init__()
 
@@ -384,7 +385,7 @@ class Qwen3Embedder(nn.Module):
             **from_pretrained_kwargs,
         )
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_spec)
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_spec or model_spec)
         self.max_length = MAX_LENGTH
 
     @torch.no_grad()
@@ -460,6 +461,7 @@ def load_qwen3_embedder(
     device: str | torch.device = "cuda",
     model_spec: str | None = None,
     gguf_file: str | None = None,
+    tokenizer_spec: str | None = None,
     fallback_model_spec: str | None = None,
 ):
     if model_spec is not None:
@@ -469,6 +471,7 @@ def load_qwen3_embedder(
                 device=device,
                 torch_dtype=None if gguf_file is not None else torch.bfloat16,
                 gguf_file=gguf_file,
+                tokenizer_spec=tokenizer_spec,
             )
         except Exception as e:
             if fallback_model_spec is None:
