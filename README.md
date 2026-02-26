@@ -139,6 +139,23 @@ You can start an interactive session to do both text to image generation as well
 PYTHONPATH=src python scripts/cli.py
 ```
 
+## Run as a Web Server
+
+You can run FLUX.2 as an HTTP service with a built-in test page:
+
+```bash
+PYTHONPATH=src python scripts/web_server.py --model_name=flux.2-klein-9b --host=0.0.0.0 --port=7860
+```
+
+Then open:
+- `http://<server-ip>:7860` for the web UI
+- `POST http://<server-ip>:7860/generate` for API calls
+
+Notes:
+- The model is loaded once and kept in memory.
+- Only one generation request is processed at a time (additional requests get HTTP `429`).
+- Make sure firewall/security-group rules allow inbound TCP `7860`.
+
 ## Watermarking
 
 We've added an option to embed invisible watermarks directly into the generated images
