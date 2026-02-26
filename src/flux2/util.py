@@ -1,7 +1,9 @@
 import base64
 import io
 import os
+import shutil
 import sys
+from pathlib import Path
 
 import huggingface_hub
 import torch
@@ -12,6 +14,64 @@ from .autoencoder import AutoEncoder, AutoEncoderParams
 from .model import Flux2, Flux2Params, Klein4BParams, Klein9BParams
 from .text_encoder import load_mistral_small_embedder, load_qwen3_embedder
 
+KLEIN4B_TEXT_ENCODER_GGUF_REPO = "Cordux/flux2-klein-4B-uncensored-text-encoder"
+KLEIN4B_TEXT_ENCODER_GGUF_FILENAME = "qwen3-4b-abl-q4_0.gguf"
+KLEIN4B_TEXT_ENCODER_GGUF_LOCAL_DEFAULT = "models/text_encoders/qwen3-4b-abl-q4_0.gguf"
+KLEIN4B_TEXT_ENCODER_GGUF_LOCAL_ALT = "models/unet/qwen3-4b-abl-q4_0.gguf"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _resolve_local_path(path: str) -> Path:
+    candidate = Path(path).expanduser()
+    if not candidate.is_absolute():
+        candidate = _PROJECT_ROOT / candidate
+    return candidate
+
+
+def resolve_klein4b_text_encoder_gguf_path() -> str:
+    env_override = os.environ.get("KLEIN4B_TEXT_ENCODER_GGUF_PATH")
+    candidate_paths = []
+    if env_override:
+        candidate_paths.append(_resolve_local_path(env_override))
+    candidate_paths.extend(
+        [
+            _resolve_local_path(KLEIN4B_TEXT_ENCODER_GGUF_LOCAL_DEFAULT),
+            _resolve_local_path(KLEIN4B_TEXT_ENCODER_GGUF_LOCAL_ALT),
+        ]
+    )
+
+    for candidate in candidate_paths:
+        if candidate.exists():
+            print(f"Using Klein 4B GGUF text encoder file: {candidate}")
+            return str(candidate)
+
+    target_path = candidate_paths[0]
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        downloaded = huggingface_hub.hf_hub_download(
+            repo_id=KLEIN4B_TEXT_ENCODER_GGUF_REPO,
+            filename=KLEIN4B_TEXT_ENCODER_GGUF_FILENAME,
+            repo_type="model",
+        )
+    except Exception:
+        print(
+            "Klein 4B GGUF text encoder file was not found locally and download failed. "
+            f"Place {KLEIN4B_TEXT_ENCODER_GGUF_FILENAME} in "
+            f"{_resolve_local_path(KLEIN4B_TEXT_ENCODER_GGUF_LOCAL_DEFAULT)} "
+            "or set KLEIN4B_TEXT_ENCODER_GGUF_PATH.",
+            file=sys.stderr,
+        )
+        raise
+
+    downloaded_path = Path(downloaded)
+    if downloaded_path.resolve() != target_path.resolve():
+        shutil.copy2(downloaded_path, target_path)
+
+    print(f"Using Klein 4B GGUF text encoder file: {target_path}")
+    return str(target_path)
+
+
 FLUX2_MODEL_INFO = {
     "flux.2-klein-4b": {
         "repo_id": "black-forest-labs/FLUX.2-klein-4B",
@@ -20,8 +80,8 @@ FLUX2_MODEL_INFO = {
         "filename_ae": "ae.safetensors",
         "params": Klein4BParams(),
         "text_encoder_load_fn": lambda device="cuda": load_qwen3_embedder(
-            model_spec="Cordux/flux2-klein-4B-uncensored-text-encoder",
-            gguf_file="qwen3-4b-abl-q4_0.gguf",
+            model_spec=KLEIN4B_TEXT_ENCODER_GGUF_REPO,
+            gguf_file=resolve_klein4b_text_encoder_gguf_path(),
             tokenizer_spec="Qwen/Qwen3-4B",
             device=device,
         ),
@@ -49,8 +109,8 @@ FLUX2_MODEL_INFO = {
         "filename_ae": "ae.safetensors",
         "params": Klein4BParams(),
         "text_encoder_load_fn": lambda device="cuda": load_qwen3_embedder(
-            model_spec="Cordux/flux2-klein-4B-uncensored-text-encoder",
-            gguf_file="qwen3-4b-abl-q4_0.gguf",
+            model_spec=KLEIN4B_TEXT_ENCODER_GGUF_REPO,
+            gguf_file=resolve_klein4b_text_encoder_gguf_path(),
             tokenizer_spec="Qwen/Qwen3-4B",
             device=device,
         ),
