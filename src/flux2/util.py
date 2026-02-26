@@ -22,7 +22,6 @@ FLUX2_MODEL_INFO = {
         "text_encoder_load_fn": lambda device="cuda": load_qwen3_embedder(
             model_spec="Cordux/flux2-klein-4B-uncensored-text-encoder",
             gguf_file="qwen3-4b-abl-q4_0.gguf",
-            fallback_model_spec="Qwen/Qwen3-4B",
             device=device,
         ),
         "model_path": "KLEIN_4B_MODEL_PATH",
@@ -51,7 +50,6 @@ FLUX2_MODEL_INFO = {
         "text_encoder_load_fn": lambda device="cuda": load_qwen3_embedder(
             model_spec="Cordux/flux2-klein-4B-uncensored-text-encoder",
             gguf_file="qwen3-4b-abl-q4_0.gguf",
-            fallback_model_spec="Qwen/Qwen3-4B",
             device=device,
         ),
         "model_path": "KLEIN_4B_BASE_MODEL_PATH",
