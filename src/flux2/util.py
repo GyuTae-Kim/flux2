@@ -26,9 +26,9 @@ FLUX2_MODEL_INFO = {
         "guidance_distilled": True,
     },
     "flux.2-klein-9b": {
-        "repo_id": "black-forest-labs/FLUX.2-klein-9B",
+        "repo_id": "GuangyuanSD/FLUX.2-klein-9B-Blitz-ComfyUI",
         "ae_repo_id": "black-forest-labs/FLUX.2-dev",
-        "filename": "flux-2-klein-9b.safetensors",
+        "filename": "DarkBeastKlein-v1-5-Blitz-9b-BF16-ComfyUI-single-transformer.safetensors",
         "filename_ae": "ae.safetensors",
         "params": Klein9BParams(),
         "text_encoder_load_fn": lambda device="cuda": load_qwen3_embedder(variant="8B", device=device),
