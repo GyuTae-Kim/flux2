@@ -452,7 +452,15 @@ def _supports_fp8(device: str | torch.device = "cuda") -> bool:
     return (major, minor) >= (8, 9)
 
 
-def load_qwen3_embedder(variant: str, device: str | torch.device = "cuda"):
+def load_qwen3_embedder(
+    variant: str | None = None,
+    device: str | torch.device = "cuda",
+    model_spec: str | None = None,
+):
+    if model_spec is not None:
+        return Qwen3Embedder(model_spec=model_spec, device=device, torch_dtype=torch.bfloat16)
+
+    assert variant is not None, "variant must be provided when model_spec is not specified"
     fp8_model_spec = f"Qwen/Qwen3-{variant}-FP8"
     fallback_model_spec = f"Qwen/Qwen3-{variant}"
 

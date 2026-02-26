@@ -31,7 +31,9 @@ FLUX2_MODEL_INFO = {
         "filename": "DarkBeastKlein-v1-5-Blitz-9b-BF16-ComfyUI-single-transformer.safetensors",
         "filename_ae": "ae.safetensors",
         "params": Klein9BParams(),
-        "text_encoder_load_fn": lambda device="cuda": load_qwen3_embedder(variant="8B", device=device),
+        "text_encoder_load_fn": lambda device="cuda": load_qwen3_embedder(
+            model_spec="huihui-ai/Huihui-Qwen3-8B-abliterated-v2", device=device
+        ),
         "model_path": "KLEIN_9B_MODEL_PATH",
         "defaults": {"guidance": 1.0, "num_steps": 4},
         "fixed_params": {"guidance", "num_steps"},
