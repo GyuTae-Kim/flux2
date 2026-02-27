@@ -30,7 +30,7 @@ HTML_PAGE = """<!doctype html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FLUX.2 Interactive Web</title>
+  <title>뀨봇 Interactive Web</title>
   <style>
     :root {
       --bg: radial-gradient(circle at 20% 20%, #1b2033 0%, #101522 40%, #0b0f17 100%);
@@ -173,7 +173,7 @@ HTML_PAGE = """<!doctype html>
 <body>
   <div class="wrap">
     <aside class="panel sidebar">
-      <div class="title">FLUX.2 Interactive</div>
+      <div class="title">뀨봇 Interactive</div>
       <div class="sub">Chat-style text-to-image + image editing (single/multi-reference)</div>
 
       <div class="row">
@@ -261,7 +261,7 @@ HTML_PAGE = """<!doctype html>
 
       const roleLabel = document.createElement("div");
       roleLabel.className = "msg-meta";
-      roleLabel.textContent = role === "user" ? "You" : "FLUX.2";
+      roleLabel.textContent = role === "user" ? "You" : "뀨봇";
       box.appendChild(roleLabel);
 
       if (text) {
@@ -396,7 +396,7 @@ HTML_PAGE = """<!doctype html>
         const res = await fetch("/health");
         const payload = await res.json();
         if (!res.ok) throw new Error(payload.detail || "unavailable");
-        healthEl.textContent = `${payload.status} | ${payload.model} | ${payload.device}`;
+        healthEl.textContent = `${payload.status} | ${payload.device}`;
       } catch (e) {
         healthEl.textContent = "health unavailable";
       }
@@ -459,7 +459,7 @@ def _unauthorized_response() -> Response:
     return PlainTextResponse(
         "Unauthorized",
         status_code=401,
-        headers={"WWW-Authenticate": 'Basic realm="FLUX2"'},
+        headers={"WWW-Authenticate": 'Basic realm="QBot"'},
     )
 
 
@@ -521,7 +521,7 @@ def create_app(
 
     infer_lock = threading.Lock()
 
-    app = FastAPI(title="FLUX.2 Web Server", version="0.2.0")
+    app = FastAPI(title="QBot Web Server", version="0.2.0")
 
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
